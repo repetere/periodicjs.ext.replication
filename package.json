@@ -1,0 +1,86 @@
+{
+  "name": "periodicjs.ext.replication",
+  "description": "An extension for seeding db with data",
+  "version": "2.0.1",
+  "main": "index.js",
+  "engines": {
+    "node": ">=0.10.x"
+  },
+  "author": {
+    "name": "Yaw Joseph Etse",
+    "email": "yaw.etse@gmail.com",
+    "url": "http://about.me/yawjosephetse"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/typesettin/periodicjs.ext.replication.git"
+  },
+  "scripts": {
+    "test": "mocha -R spec --recursive",
+    "postinstall": "node install.js",
+    "postuninstall": "node uninstall.js"
+  },
+  "dependencies": {
+    "async": "0.9.0",
+    "codemirror": "^4.6.0",
+    "fs-extra": "0.9.1",
+    "periodicjs.component.tabs": "^1.1.0",
+    "periodicjs.core.controller": "~1.90.11",
+    "periodicjs.core.extensions": "~1.90.16",
+    "periodicjs.core.utilities": "~1.90.10",
+    "ssh2": "^0.3.6"
+  },
+  "peerDependencies": {
+    "periodicjs.ext.dbseed": "~2.1.0"
+  },
+  "devDependencies": {
+    "browserify": "~4.2.1",
+    "chai": "1.9.1",
+    "grunt": ">=0.4.5",
+    "grunt-contrib-jshint": ">=0.4.3",
+    "grunt-contrib-watch": ">=0.4.1",
+    "grunt-simple-mocha": ">=0.4.0",
+    "grunt-jsbeautifier": ">=0.2.7",
+    "grunt-contrib-copy": ">=0.5.0",
+    "grunt-browserify": ">=2.1.3",
+    "grunt-contrib-less": ">=0.11.3",
+    "grunt-jsdoc": ">=0.5.6",
+    "grunt-contrib-uglify": ">=0.4.0",
+    "grunt-contrib-cssmin": ">=0.9.0",
+    "grunt-newer": ">=0.7.0",
+    "jsdoc": "3.3.0-alpha5",
+    "mocha": "1.9.0",
+    "uglify-js": "^2.4.15",
+    "uglifyify": "^2.5.0"
+  },
+  "keywords": [
+    "periodicjs"
+  ],
+  "_id": "periodicjs.ext.replication@2.0.1",
+  "_shasum": "1d28ec47e7ea49bcff7123517dff96c78438b491",
+  "_from": "https://github.com/typesettin/periodicjs.ext.replication/archive/master.tar.gz",
+  "_resolved": "https://github.com/typesettin/periodicjs.ext.replication/archive/master.tar.gz",
+  "gitHead": "c998dc634f5104167cd1fd23d1829674264dfe39",
+  "bugs": {
+    "url": "https://github.com/typesettin/periodicjs.ext.dbseed/issues"
+  },
+  "homepage": "https://github.com/typesettin/periodicjs.ext.dbseed",
+  "_npmVersion": "1.5.0-alpha-4",
+  "_npmUser": {
+    "name": "yawetse",
+    "email": "yaw.etse@gmail.com"
+  },
+  "maintainers": [
+    {
+      "name": "yawetse",
+      "email": "yaw.etse@gmail.com"
+    }
+  ],
+  "dist": {
+    "shasum": "1d28ec47e7ea49bcff7123517dff96c78438b491",
+    "tarball": "http://registry.npmjs.org/periodicjs.ext.dbseed/-/periodicjs.ext.dbseed-2.0.0.tgz"
+  },
+  "directories": {},
+  "readme": "# periodicjs.ext.replication\n\nreplication your current instance of periodic to a zip archieve containing your configurations, content, themes, and database.\n\n [API Documentation](https://github.com/typesettin/periodicjs.ext.replication/blob/master/doc/api.md)\n\n## Installation\n\n```\n$ npm install periodicjs.ext.replication\n```\n\n## Usage\n\n### import database (upsert/update) with custom file replication from cli\n\n```\n$ node index.js --cli --extension replication --task replication [--filename optionalreplicationzipname --outputpath optionaloutputdirectory]\n```\n\n### export database to replication file replication from cli\n\n```\n$ node index.js --cli --extension replication --task export --file /path/to/file.json\n```\n\nIf no file path is specified, the default file path is `content/files/replications/replications/replication-[year]-[month]-[day]-[timestamp].json`\n\n##Development\n*Make sure you have grunt installed*\n```\n$ npm install -g grunt-cli\n```\n\nThen run grunt watch\n```\n$ grunt watch\n```\nFor generating documentation\n```\n$ grunt doc\n$ jsdoc2md controller/**/*.js index.js install.js uninstall.js > doc/api.md\n```\n##Notes\n* Check out https://github.com/typesettin/periodicjs for the full Periodic Documentation\n* example replication: clear && node index.js --cli --extension replication --task replication --filename myreplication --outputpath ~/Downloads/myperiodicreplication",
+  "readmeFilename": "README.md"
+}

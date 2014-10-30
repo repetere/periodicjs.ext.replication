@@ -1,0 +1,11 @@
+{
+	"periodicCompatibility":"2.0.0",
+	"periodicDependencies": [],
+	"periodicjs.ext.admin": {
+		"menu": {
+			"Extensions": {
+				"replication admin": "<a href=\"/p-admin/replication\">Periodic Replication</a>"
+			}
+		}
+	}
+}
