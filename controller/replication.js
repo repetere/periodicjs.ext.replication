@@ -27,34 +27,60 @@ var Utilities = require('periodicjs.core.utilities'),
 var getReplicationData = function (replicationSettings, asyncCallBack) {
 	try {
 		var conn = new Connection();
-		conn.on('ready', function () {
-			console.log('Connection :: ready');
-			conn.exec('uptime', function (err, stream) {
-				if (err) {
-					asyncCallBack(err);
-				}
-				else {
-					stream.on('exit', function (code, signal) {
-						console.log('Stream :: exit :: code: ' + code + ', signal: ' + signal);
-						asyncCallBack(null, 'Stream :: exit :: code: ' + code + ', signal: ' + signal);
-					}).on('close', function () {
-						console.log('Stream :: close');
-						conn.end();
-					}).on('data', function (data) {
-						console.log('STDOUT: ' + data);
-					}).stderr.on('data', function (data) {
-						console.log('STDERR: ' + data);
-					});
-				}
+		var onShell1 = function () {
+			conn.exec('cd /var/www/promise-web-application/current/periodicjs && ls && node index.js --cli --extension dbseed --task export', function (err, stream) {
+				stream.on('exit', function (code, signal) {
+					console.log('Stream :: exit :: code: ' + code + ', signal: ' + signal);
+					asyncCallBack(null, 'Stream :: exit :: code: ' + code + ', signal: ' + signal);
+				});
+				stream.on('close', function () {
+					console.log('Stream :: close');
+					// conn.shell('ls');
+					conn.end();
+
+				});
+				stream.on('data', function (data) {
+					console.log('STDOUT: ' + data);
+				});
+				stream.stderr.on('data', function (data) {
+					console.log('STDERR: ' + data);
+				});
+				stream.on('end', function () {
+					conn.end();
+				});
 			});
-		}).connect(replicationSettings);
-		conn.on('error', function (err) {
-			asyncCallBack(err);
+			// conn.shell('ls -l', function (err, stream) {
+			// 	if (err) {
+			// 		asyncCallBack(err);
+			// 	}
+			// 	stream.on('close', function () {
+			// 		console.log('Stream :: close');
+			// 		conn.end();
+			// 	});
+			// 	stream.on('data', function (data) {
+			// 		console.log('STDOUT: ' + data);
+			// 	});
+			// 	stream.stderr.on('data', function (data) {
+			// 		console.log('STDERR: ' + data);
+			// 	});
+			// 	stream.end('cd /var/www/promise-web-application/current/periodicjs && ls');
 		});
-	}
-	catch (e) {
-		asyncCallBack(e);
-	}
+};
+conn.on('ready', function () {
+	console.log('Connection :: readys');
+	conn.shell(onShell1);
+});
+conn.connect(replicationSettings);
+conn.on('error', function (err) {
+	asyncCallBack(err);
+});
+conn.on('end', function () {
+	asyncCallBack(null, 'got replication');
+});
+}
+catch (e) {
+	asyncCallBack(e);
+}
 };
 
 /**
