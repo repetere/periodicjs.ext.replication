@@ -30,15 +30,13 @@ var extscript = function (resources) {
 	replicationController = require('./controller/replication')(resources);
 	// node index.js --cli --extension replication --task sampledata
 	var cli = function (argv) {
-		if (argv.task === 'replication') {
-			console.time('Backing up periodic');
-			replicationController.exportreplication({
-					filepath: argv.filepath,
-					filename: argv.filename,
-					outputpath: argv.outputpath
+		if (argv.task === 'replicate') {
+			console.time('replication task');
+			replicationController.replicate_periodic({
+					environment: argv.repenv
 				},
 				function (err, result) {
-					console.timeEnd('Backing up periodic');
+					console.timeEnd('replication task');
 					if (err) {
 						logger.error(err.stack.toString());
 						logger.error(err.toString());
@@ -49,24 +47,24 @@ var extscript = function (resources) {
 					process.exit(0);
 				});
 		}
-		else if (argv.task === 'restore') {
-			console.time('Restoring periodic');
-			replicationController.restorereplication({
-					file: argv.file,
-					removereplication: argv.removereplication
-				},
-				function (err, result) {
-					console.timeEnd('Restoring periodic');
-					if (err) {
-						logger.error(err.stack.toString());
-						logger.error(err.toString());
-					}
-					else {
-						logger.info('restore replication result', result);
-					}
-					process.exit(0);
-				});
-		}
+		// else if (argv.task === 'restore') {
+		// 	console.time('Restoring periodic');
+		// 	replicationController.restorereplication({
+		// 			file: argv.file,
+		// 			removereplication: argv.removereplication
+		// 		},
+		// 		function (err, result) {
+		// 			console.timeEnd('Restoring periodic');
+		// 			if (err) {
+		// 				logger.error(err.stack.toString());
+		// 				logger.error(err.toString());
+		// 			}
+		// 			else {
+		// 				logger.info('restore replication result', result);
+		// 			}
+		// 			process.exit(0);
+		// 		});
+		// }
 		else {
 			logger.silly('invalid replication task', argv);
 			process.exit(0);

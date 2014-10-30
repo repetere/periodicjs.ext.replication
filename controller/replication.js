@@ -2,12 +2,14 @@
 
 var Utilities = require('periodicjs.core.utilities'),
 	ControllerHelper = require('periodicjs.core.controller'),
+	Extensions = require('periodicjs.core.extensions'),
 	Connection = require('ssh2'),
 	fs = require('fs-extra'),
 	path = require('path'),
 	async = require('async'),
 	CoreUtilities,
 	CoreController,
+	CoreExtension,
 	appSettings,
 	mongoose,
 	logger,
@@ -22,29 +24,37 @@ var Utilities = require('periodicjs.core.utilities'),
  * @param  {Function} asyncCallBack
  * @return {Function} async callback asyncCallBack(err,results);
  */
-var getReplicationData = function(replicationSettings,asyncCallBack){
-	var conn = new Connection();
-	conn.on('ready', function() {
-	  console.log('Connection :: ready');
-	  conn.exec('uptime', function(err, stream) {
-	    if (err){ 
-	    	asyncCallBack(err);
-	    }
-	    else{
-		    stream.on('exit', function(code, signal) {
-		      console.log('Stream :: exit :: code: ' + code + ', signal: ' + signal);
-		      asyncCallBack(null,'Stream :: exit :: code: ' + code + ', signal: ' + signal);
-		    }).on('close', function() {
-		      console.log('Stream :: close');
-		      conn.end();
-		    }).on('data', function(data) {
-		      console.log('STDOUT: ' + data);
-		    }).stderr.on('data', function(data) {
-		      console.log('STDERR: ' + data);
-		    });
-	    }
-	  });
-	}).connect(replicationSettings);
+var getReplicationData = function (replicationSettings, asyncCallBack) {
+	try {
+		var conn = new Connection();
+		conn.on('ready', function () {
+			console.log('Connection :: ready');
+			conn.exec('uptime', function (err, stream) {
+				if (err) {
+					asyncCallBack(err);
+				}
+				else {
+					stream.on('exit', function (code, signal) {
+						console.log('Stream :: exit :: code: ' + code + ', signal: ' + signal);
+						asyncCallBack(null, 'Stream :: exit :: code: ' + code + ', signal: ' + signal);
+					}).on('close', function () {
+						console.log('Stream :: close');
+						conn.end();
+					}).on('data', function (data) {
+						console.log('STDOUT: ' + data);
+					}).stderr.on('data', function (data) {
+						console.log('STDERR: ' + data);
+					});
+				}
+			});
+		}).connect(replicationSettings);
+		conn.on('error', function (err) {
+			asyncCallBack(err);
+		});
+	}
+	catch (e) {
+		asyncCallBack(e);
+	}
 };
 
 /**
@@ -52,21 +62,21 @@ var getReplicationData = function(replicationSettings,asyncCallBack){
  * @param  {Function} asyncCallBack
  * @return {Function} async callback asyncCallBack(err,results);
  */
-var getReplicationConfig = function(replicateFromEnvironment,asyncCallBack){
-	fs.readJson(replicationconffilepath,function(err,confJson){
-		if(err){
-			asyncCallBack(err,null);
+var getReplicationConfig = function (replicateFromEnvironment, asyncCallBack) {
+	fs.readJson(replicationconffilepath, function (err, confJson) {
+		if (err) {
+			asyncCallBack(err, null);
 		}
-		else{
-			try{
-				replicationSettings = confJson[replicateEnvironment];	
-				if(replicationSettings.webapppath){
-					replicationSettings.webapppath = require('fs').readFileSync(path.resolve(replicationSettings.webapppath));
-				}			
-				asyncCallBack(null,replicationSettings);
+		else {
+			try {
+				replicationSettings = confJson[replicateFromEnvironment];
+				if (replicationSettings.privateKey) {
+					replicationSettings.privateKey = fs.readFileSync(path.resolve(replicationSettings.privateKey));
+				}
+				asyncCallBack(null, replicationSettings);
 			}
-			catch(e){
-				asyncCallBack(e,null);
+			catch (e) {
+				asyncCallBack(e, null);
 			}
 		}
 	});
@@ -77,18 +87,17 @@ var getReplicationConfig = function(replicateFromEnvironment,asyncCallBack){
  * @param  {Function} asyncCallBack
  * @return {Function} async callback asyncCallBack(err,results);
  */
-var replicate_periodic = function(options,asyncCallBack){
+var replicate_periodic = function (options, asyncCallBack) {
 	var environment = options.environment;
 
 	async.waterfall([
-			function(cb){
-				cb(null,environment);
-			},
-			getReplicationConfig,
-			getReplicationData
-		]
-		,function(err,results){
-			asyncCallBack(err,results);
+		function (cb) {
+			cb(null, environment);
+		},
+		getReplicationConfig,
+		getReplicationData
+	], function (err, results) {
+		asyncCallBack(err, results);
 	});
 };
 
@@ -100,8 +109,8 @@ var replicate_periodic = function(options,asyncCallBack){
  */
 var index = function (req, res) {
 	async.waterfall([
-		function (cb) { 
-			fs.ensureDir(path.join(process.cwd(), 'content/files/replications'),function(err){
+		function (cb) {
+			fs.ensureDir(path.join(process.cwd(), 'content/files/replications'), function (err) {
 				cb(err);
 			});
 		},
@@ -118,12 +127,12 @@ var index = function (req, res) {
 		function (templatepath, cb) {
 			fs.readdir(path.join(process.cwd(), 'content/files/replications'), function (err, files) {
 				var replicationzipfiles = [];
-				if(files && files.length >0){
+				if (files && files.length > 0) {
 					for (var bufi = 0; bufi < files.length; bufi++) {
 						if (files[bufi].match(/.zip/gi)) {
 							replicationzipfiles.push(files[bufi]);
 						}
-					}	
+					}
 				}
 				cb(err, {
 					templatepath: templatepath,
@@ -173,7 +182,8 @@ var controller = function (resources) {
 	appSettings = resources.settings;
 	CoreController = new ControllerHelper(resources);
 	CoreUtilities = new Utilities(resources);
-	replicationconffilepath  = path.join(CoreExtension.getconfigdir({
+	CoreExtension = new Extensions(appSettings);
+	replicationconffilepath = path.join(CoreExtension.getconfigdir({
 		extname: 'periodicjs.ext.replication'
 	}), 'settings.json');
 
