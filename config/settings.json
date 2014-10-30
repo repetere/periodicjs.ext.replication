@@ -1,0 +1,13 @@
+{
+	"development":{
+	  "host": "192.168.100.100",
+	  "port": 22,
+	  "username": "sshusername",
+	},
+	"production":{
+	  "host": "192.168.200.100",
+	  "port": 22,
+	  "username": "sshusername",
+	  "privateKey": "path/to/private/key"
+	}
+}
