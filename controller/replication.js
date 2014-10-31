@@ -4,6 +4,7 @@ var Utilities = require('periodicjs.core.utilities'),
 	ControllerHelper = require('periodicjs.core.controller'),
 	Extensions = require('periodicjs.core.extensions'),
 	Connection = require('ssh2'),
+	CronJob = require('cron').CronJob,
 	fs = require('fs-extra'),
 	path = require('path'),
 	async = require('async'),
@@ -225,6 +226,64 @@ var index = function (req, res) {
 };
 
 /**
+ * runs cron to replication
+ * @todo use: https://github.com/thomseddon/cronstring/ at some point
+ */
+var run_replication_cron = function () {
+	var replicationCronSettings,
+		appenvironment = appSettings.application.environment;
+	fs.readJson(replicationconffilepath, function (err, replicationsettingsJSON) {
+		if (err) {
+			logger.error('REPLICATION CRON ERROR');
+			logger.error(err);
+			console.error(err);
+		}
+		else {
+			try {
+				if (replicationsettingsJSON.cron) {
+					replicationCronSettings = replicationsettingsJSON.cron[appenvironment];
+					logger.info('Replication Cron Job Settings', replicationCronSettings.replicationcron);
+					var job = new CronJob({
+						cronTime: "1 * * * * *", // replicationCronSettings.replicationcron,
+						onTick: function () {
+							replicate_periodic({
+									environment: replicationCronSettings.replicationfrom
+								},
+								function (err, result) {
+									console.timeEnd('replication task');
+									if (err) {
+										logger.error(err.stack.toString());
+										logger.error(err.toString());
+									}
+									else {
+										logger.info('replication result', result);
+									}
+								});
+
+						},
+						onComplete: function () {
+								logger.silly('replication cron ran');
+							} //,
+							// start: true
+							// timeZone: "America/Los_Angeles"
+					});
+					// logger.silly(job);
+					job.start();
+
+
+
+				}
+			}
+			catch (e) {
+				logger.error('REPLICATION SETTING CRON ERROR');
+				logger.error(e);
+				console.error(e);
+			}
+		}
+	})
+};
+
+/**
  * replication controller
  * @module replicationController
  * @{@link https://github.com/typesettin/periodicjs.ext.replication}
@@ -248,6 +307,8 @@ var controller = function (resources) {
 		extname: 'periodicjs.ext.replication'
 	}), 'settings.json');
 	restoreController = require('../../periodicjs.ext.backup/controller/restorebackup')(resources);
+
+	run_replication_cron();
 	return {
 		index: index,
 		replicate_periodic: replicate_periodic,

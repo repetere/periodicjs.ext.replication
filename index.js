@@ -16,8 +16,8 @@ module.exports = function (periodic) {
 
 	for (var x in periodic.settings.extconf.extensions) {
 		if (periodic.settings.extconf.extensions[x].name === 'periodicjs.ext.admin') {
-			replicationRouter.post('/restorereplication', replicationController.restore_replication);
-			replicationRouter.post('/downloadreplication', replicationController.download_replication);
+			// replicationRouter.post('/restorereplication', replicationController.restore_replication);
+			// replicationRouter.post('/downloadreplication', replicationController.download_replication);
 			replicationRouter.get('/', replicationController.index);
 		}
 	}
