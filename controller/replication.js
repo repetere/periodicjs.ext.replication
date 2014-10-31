@@ -244,7 +244,7 @@ var run_replication_cron = function () {
 					replicationCronSettings = replicationsettingsJSON.cron[appenvironment];
 					logger.info('Replication Cron Job Settings', replicationCronSettings.replicationcron);
 					var job = new CronJob({
-						cronTime: "1 * * * * *", // replicationCronSettings.replicationcron,
+						cronTime: replicationCronSettings.replicationcron,
 						onTick: function () {
 							replicate_periodic({
 									environment: replicationCronSettings.replicationfrom
