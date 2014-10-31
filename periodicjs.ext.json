@@ -1,6 +1,12 @@
 {
 	"periodicCompatibility":"2.0.0",
-	"periodicDependencies": [],
+	"periodicDependencies": [{
+  	"extname":"periodicjs.ext.dbseed",
+  	"version":"2.1.0"
+	},{
+  	"extname":"periodicjs.ext.backup",
+    "version":"2.0.1"
+	}],
 	"periodicjs.ext.admin": {
 		"menu": {
 			"Extensions": {

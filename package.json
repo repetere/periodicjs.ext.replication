@@ -31,7 +31,8 @@
     "ssh2": "^0.3.6"
   },
   "peerDependencies": {
-    "periodicjs.ext.dbseed": "~2.1.0"
+    "periodicjs.ext.dbseed": "~2.1.0",
+    "periodicjs.ext.backup": "~2.0.1"
   },
   "devDependencies": {
     "browserify": "~4.2.1",
