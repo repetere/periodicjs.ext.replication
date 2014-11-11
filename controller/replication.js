@@ -9,6 +9,7 @@ var Utilities = require('periodicjs.core.utilities'),
 	path = require('path'),
 	async = require('async'),
 	cronparser = require('cron-parser'),
+	moment = require('moment'),
 	croninterval,
 	CoreUtilities,
 	CoreController,
@@ -174,11 +175,10 @@ var replicate_periodic = function (options, asyncCallBack) {
 var index = function (req, res) {
 	var appenvironment = appSettings.application.environment;
 	async.waterfall([
-		function (cb) {
-			cb(null, appenvironment);
+		function(cb){
+			fs.readJson(replicationconffilepath, cb);
 		},
-		getReplicationConfig,
-		function (replicationSettings,cb) {
+		function (replicationSettingsJson,cb) {
 			CoreController.getPluginViewDefaultTemplate({
 				viewname: 'p-admin/replication/index',
 				themefileext: appSettings.templatefileextension,
@@ -187,7 +187,7 @@ var index = function (req, res) {
 			function (err, templatepath) {
 				cb(err, {
 					templatepath: templatepath,
-					replicationsettings: replicationSettings
+					replicationsettingsjson: replicationSettingsJson
 				});
 			});
 		}
@@ -199,15 +199,18 @@ var index = function (req, res) {
 			renderView: result.templatepath,
 			responseData: {
 				pagedata: {
-					title: 'Backup & Restore',
+					title: 'Application Replication',
 					headerjs: ['/extensions/periodicjs.ext.replication/js/replication.min.js'],
 					extensions: CoreUtilities.getAdminMenu()
 				},
 				periodic: {
 					version: appSettings.version
 				},
-				replicationsettings: result.replicationsettings,
+				replicationsettingsjson: result.replicationsettingsjson,
 				nextreplication: nextReplicationCron,
+				nextreplicationformatted: moment(nextReplicationCron).format('MMMM Do YYYY, h:mm:ss a'),
+				nextreplicationfromnow: moment(nextReplicationCron).fromNow(),
+				currentenv: appenvironment,
 				user: req.user
 			}
 		});
@@ -235,7 +238,7 @@ var run_replication_cron = function () {
 				croninterval = cronparser.parseExpression(replicationCronSettings.replicationcron);
 				nextReplicationCron = croninterval.next();
 				logger.info('Replication Cron Job Settings', replicationCronSettings.replicationcron);
-				logger.info('Next Replication Cron :', nextReplicationCron);
+				logger.info('Next Replication Cron :', nextReplicationCron.toString());
 				var job = new CronJob({
 					cronTime: replicationCronSettings.replicationcron,
 					onTick: function () {
@@ -251,7 +254,7 @@ var run_replication_cron = function () {
 								else {
 									logger.info('replication result', result);
 									nextReplicationCron = croninterval.next();
-									logger.info('Next Replication Cron :', nextReplicationCron);
+									logger.info('Next Replication Cron :', nextReplicationCron.toString());
 								}
 							});
 

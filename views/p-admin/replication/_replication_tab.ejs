@@ -7,12 +7,15 @@
 				</div> -->
 				<div class="_pea-col-span12">
 					<form class="_pea-form " method="post" action="/p-admin/backup/downloadbackup" >
-						<h3>Download Export Backup</h3>
-						<div class="_pea-row _pea-container-forminput">
-							<div class="_pea-col-span10">
-								<p>Download a back up of your entire periodic instance, this downloads a zip archieve of your content, configuration, a DB seed of your database and public files.</p>
+						<% if(replicationsettingsjson && replicationsettingsjson.cron && replicationsettingsjson.cron[currentenv]){%>
+							<h3>Scheduled Replication</h3>
+							<div class="_pea-row _pea-container-forminput">
+								<div class="_pea-col-span10">
+									<p><strong>Environment [<%- currentenv %> ]</strong>: Scheduled to replicate from <span class="_pea-button _pea-text-small"><%- replicationsettingsjson.cron[currentenv].replicationfrom %></span></p>
+									<p><strong>Next Replication Task</strong>: <%- nextreplicationfromnow %> (<%- nextreplicationformatted %>)</p>
+								</div>
 							</div>
-						</div>
+						<%} %>
 						<input type="hidden" name="_csrf" value=<%= locals.token %> >
 						<div class="_pea-row _pea-container-forminput _pea-text-center">
 							<input type="submit" name="save_button" style="font-size: 125%;" value="Download Periodic Backup" class="_pea-button _pea-color-success"/>

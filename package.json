@@ -26,6 +26,7 @@
     "cron": "^1.0.5",
     "cron-parser": "^0.4.5",
     "fs-extra": "0.9.1",
+    "moment": "^2.8.3",
     "periodicjs.component.tabs": "^1.1.0",
     "periodicjs.core.controller": "~1.90.11",
     "periodicjs.core.extensions": "~1.90.16",

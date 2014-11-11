@@ -1,11 +1,9 @@
 'use strict';
 
-var fs = require('fs-extra'),
-	replicationController,
+var replicationController,
 	mongoose,
 	logger,
-	appSettings,
-	d = new Date();
+	appSettings;
 
 /**
  * cli replication controller
@@ -14,8 +12,6 @@ var fs = require('fs-extra'),
  * @author Yaw Joseph Etse
  * @copyright Copyright (c) 2014 Typesettin. All rights reserved.
  * @license MIT
- * @requires module:path
- * @requires module:fs-extra
  * @param  {object} resources variable injection from current periodic instance with references to the active logger and mongo session
  * @return {object}           replication cli
  */
@@ -24,7 +20,7 @@ var extscript = function (resources) {
 	mongoose = resources.mongoose;
 	appSettings = resources.settings;
 	replicationController = require('./controller/replication')(resources);
-	// node index.js --cli --extension replication --task sampledata
+	// node index.js --cli --extension replication --task replicate --repenv production
 	var cli = function (argv) {
 		if (argv.task === 'replicate') {
 			console.time('replication task');
