@@ -6,7 +6,8 @@
 					<p>Export your database.</p>
 				</div> -->
 				<div class="_pea-col-span12">
-					<form class="_pea-form " method="post" action="/p-admin/backup/downloadbackup" >
+					<form class="_pea-form  _pea-ajax-form noFormSubmit" method="post" action="/p-admin/backup/downloadbackup" data-successfunction="displayReplicationSeedStatus" data-beforesubmitfunction="showReplicationStatusResult">
+						<input type="hidden" name="_csrf" value=<%= locals.token %> >
 						<% if(replicationsettingsjson && replicationsettingsjson.cron && replicationsettingsjson.cron[currentenv]){%>
 							<h3>Scheduled Replication</h3>
 							<div class="_pea-row _pea-container-forminput">
@@ -16,9 +17,22 @@
 								</ul>
 							</div>
 						<%} %>
-						<input type="hidden" name="_csrf" value=<%= locals.token %> >
+						<h3>Replicate now from 
+						<select id="replicationenvironmentlist" name="replicationenvironmentlist">
+							<% if(replicationsettingsjson && replicationsettingsjson.environment){%>
+								<option>Select an environment</option>
+								<% for(var i in replicationsettingsjson.environment){ %>
+									<option value="<%- i %>"><%- i %></option>
+								<%};
+							}
+							else {%>
+								<option>No seeds files</option>
+							<%}%>
+						</select>
+						</h3>
+						
 						<div class="_pea-row _pea-container-forminput _pea-text-center">
-							<input type="submit" name="save_button" style="font-size: 125%;" value="Download Periodic Backup" class="_pea-button _pea-color-success"/>
+							<input type="submit" name="save_button" style="font-size: 125%;" value="Run Replication" class="_pea-button _pea-color-success"/>
 						</div>
 					</form>
 				</div>

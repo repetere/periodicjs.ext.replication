@@ -132,7 +132,7 @@ var getReplicationConfig = function (replicateFromEnvironment, asyncCallBack) {
 		}
 		else {
 			try {
-				replicationSettings = confJson[replicateFromEnvironment];
+				replicationSettings = confJson.environment[replicateFromEnvironment];
 				if (replicationSettings.privateKey) {
 					replicationSettings.privateKey = fs.readFileSync(path.resolve(replicationSettings.privateKey));
 				}
@@ -215,7 +215,6 @@ var index = function (req, res) {
 			}
 		});
 	});
-
 };
 
 /**
