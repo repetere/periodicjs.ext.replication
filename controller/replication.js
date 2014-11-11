@@ -25,7 +25,6 @@ var Utilities = require('periodicjs.core.utilities'),
 	remotefiletodownload,
 	localfiletosave = path.resolve(process.cwd(), 'content/files/backups/replicationsnapshot.zip');
 
-
 /**
  * restore the downloaded zip file and remove it when done
  * @param  {Function} asyncCallBack
@@ -49,6 +48,9 @@ var getReplicationData = function (replicationSettings, asyncCallBack) {
 		var conn = new Connection(),
 			downloadProgressStatus = function (downloaded, chunk, total) {
 				console.log('downloaded', Math.floor((downloaded / total) * 100), '%', 'total', total, 'bytes');
+				if (downloaded === total) {
+					logger.info('Replication downloaded: ' + total + 'bytes');
+				}
 			},
 			downloadReplicationBackup = function () {
 				conn.sftp(function (err, sftp) {
@@ -67,6 +69,8 @@ var getReplicationData = function (replicationSettings, asyncCallBack) {
 								}
 								else {
 									console.log('stfp :: exit ::');
+									logger.info('downloaded replication data');
+									logger.info('Replication download complete: ' + new Date().toString());
 									asyncCallBack(null);
 									conn.end();
 								}
@@ -103,21 +107,21 @@ var getReplicationData = function (replicationSettings, asyncCallBack) {
 					}
 				});
 			};
-			conn.connect(replicationSettings);
-			conn.on('ready', function () {
-				console.log('Connection :: readys');
-				conn.shell(onShell1);
-			});
-			conn.on('error', function (err) {
-				asyncCallBack(err);
-			});
-			conn.on('end', function () {
-				asyncCallBack(null, 'got replication');
-			});
-		}
-		catch (e) {
-			asyncCallBack(e);
-		}
+		conn.connect(replicationSettings);
+		conn.on('ready', function () {
+			console.log('Connection :: readys');
+			conn.shell(onShell1);
+		});
+		conn.on('error', function (err) {
+			asyncCallBack(err);
+		});
+		conn.on('end', function () {
+			asyncCallBack(null, 'got replication');
+		});
+	}
+	catch (e) {
+		asyncCallBack(e);
+	}
 };
 
 /**
@@ -162,9 +166,50 @@ var replicate_periodic = function (options, asyncCallBack) {
 		getReplicationData,
 		restoreFromReplicationBackup
 	], function (err, results) {
+		logger.info('Replication completed successfully');
 		asyncCallBack(err, results);
 	});
 };
+
+/**
+ * upload custom seed controller for seeds posted via admin interface
+ * @param  {object} req
+ * @param  {object} res
+ * @return {object} responds with dbseed page
+ */
+var run_replication = function (req, res) {
+	var replicationOptions = CoreUtilities.removeEmptyObjectValues(req.body);
+
+	console.time('Replication Status Data');
+	replicate_periodic({
+			environment: replicationOptions.replicationenvironmentlist
+		},
+		function (err, result) {
+			console.timeEnd('Replication Status Data');
+			if (err) {
+				CoreController.handleDocumentQueryErrorResponse({
+					err: err,
+					res: res,
+					req: req
+				});
+			}
+			else {
+				CoreController.handleDocumentQueryRender({
+					res: res,
+					req: req,
+					renderView: 'home/index',
+					responseData: {
+						pagedata: {
+							title: 'Replication Status',
+						},
+						data: result,
+						user: req.user
+					}
+				});
+			}
+		});
+};
+
 
 /**
  * uploads replications via admin interface
@@ -175,21 +220,21 @@ var replicate_periodic = function (options, asyncCallBack) {
 var index = function (req, res) {
 	var appenvironment = appSettings.application.environment;
 	async.waterfall([
-		function(cb){
+		function (cb) {
 			fs.readJson(replicationconffilepath, cb);
 		},
-		function (replicationSettingsJson,cb) {
+		function (replicationSettingsJson, cb) {
 			CoreController.getPluginViewDefaultTemplate({
-				viewname: 'p-admin/replication/index',
-				themefileext: appSettings.templatefileextension,
-				extname: 'periodicjs.ext.replication'
-			},
-			function (err, templatepath) {
-				cb(err, {
-					templatepath: templatepath,
-					replicationsettingsjson: replicationSettingsJson
+					viewname: 'p-admin/replication/index',
+					themefileext: appSettings.templatefileextension,
+					extname: 'periodicjs.ext.replication'
+				},
+				function (err, templatepath) {
+					cb(err, {
+						templatepath: templatepath,
+						replicationsettingsjson: replicationSettingsJson
+					});
 				});
-			});
 		}
 	], function (err, result) {
 		CoreController.handleDocumentQueryRender({
@@ -268,8 +313,8 @@ var run_replication_cron = function () {
 				// logger.silly(job);
 				job.start();
 			}
-			else{
-				logger.info('No Replication Cron Settings for: '+appenvironment);
+			else {
+				logger.info('No Replication Cron Settings for: ' + appenvironment);
 			}
 		});
 	}
@@ -309,8 +354,7 @@ var controller = function (resources) {
 	return {
 		index: index,
 		replicate_periodic: replicate_periodic,
-		// restoreBackup: restoreBackupModule.restoreBackup,
-		// exportBackup: exportBackupModule.exportBackup,
+		run_replication: run_replication,
 	};
 };
 
