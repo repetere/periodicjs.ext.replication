@@ -6,7 +6,7 @@
 					<p>Export your database.</p>
 				</div> -->
 				<div class="_pea-col-span12">
-					<form class="_pea-form  _pea-ajax-form noFormSubmit" method="post" action="/p-admin/backup/downloadbackup" data-successfunction="displayReplicationStatus" data-beforesubmitfunction="showReplicationStatusResult"  data-errorfunction="handleAjaxError">
+					<form class="_pea-form  _pea-ajax-form noFormSubmit" method="post" action="/p-admin/replication/replicatenow" data-successfunction="displayReplicationStatus" data-beforesubmitfunction="showReplicationStatusResult"  data-errorfunction="handleAjaxError">
 						<input type="hidden" name="_csrf" value=<%= locals.token %> >
 						<% if(replicationsettingsjson && replicationsettingsjson.cron && replicationsettingsjson.cron[currentenv]){%>
 							<h3>Scheduled Replication</h3>
