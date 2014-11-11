@@ -242,6 +242,7 @@ var run_replication_cron = function () {
 				var job = new CronJob({
 					cronTime: replicationCronSettings.replicationcron,
 					onTick: function () {
+						console.time('replication task');
 						replicate_periodic({
 								environment: replicationCronSettings.replicationfrom
 							},
