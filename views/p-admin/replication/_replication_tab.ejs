@@ -10,10 +10,10 @@
 						<% if(replicationsettingsjson && replicationsettingsjson.cron && replicationsettingsjson.cron[currentenv]){%>
 							<h3>Scheduled Replication</h3>
 							<div class="_pea-row _pea-container-forminput">
-								<div class="_pea-col-span10">
-									<p><strong>Environment [<%- currentenv %> ]</strong>: Scheduled to replicate from <span class="_pea-button _pea-text-small"><%- replicationsettingsjson.cron[currentenv].replicationfrom %></span></p>
-									<p><strong>Next Replication Task</strong>: <%- nextreplicationfromnow %> (<%- nextreplicationformatted %>)</p>
-								</div>
+								<ul class="_pea-col-span10">
+									<li><strong>Environment [<%- currentenv %>]</strong>: Scheduled to replicate from <span class="_pea-button _pea-text-small"><%- replicationsettingsjson.cron[currentenv].replicationfrom %></span></li>
+									<li><strong>Next Replication Task</strong>: <%- nextreplicationfromnow %> <span class="_pea-button _pea-text-small"><%- nextreplicationformatted %></span></li>
+								</ul>
 							</div>
 						<%} %>
 						<input type="hidden" name="_csrf" value=<%= locals.token %> >
