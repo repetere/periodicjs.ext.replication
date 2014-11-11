@@ -25,7 +25,7 @@ window.displayReplicationStatus = function (ajaxFormResponse) {
 };
 
 window.handleAjaxError = function (errormessage) {
-	console.log('errormessage', errormessage);
+	//console.log('errormessage', errormessage);
 	if (errormessage === 'Origin is not allowed by Access-Control-Allow-Origin') {
 		window.location.reload();
 	}
