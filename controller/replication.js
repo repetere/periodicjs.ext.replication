@@ -232,55 +232,54 @@ var index = function (req, res) {
 var run_replication_cron = function () {
 	var replicationCronSettings,
 		appenvironment = appSettings.application.environment;
-	fs.readJson(replicationconffilepath, function (err, replicationsettingsJSON) {
-		if (err) {
-			logger.error('REPLICATION CRON ERROR');
-			logger.error(err);
-			console.error(err);
-		}
-		else {
-			try {
-				if (replicationsettingsJSON.cron) {
-					replicationCronSettings = replicationsettingsJSON.cron[appenvironment];
-					logger.info('Replication Cron Job Settings', replicationCronSettings.replicationcron);
-					var job = new CronJob({
-						cronTime: replicationCronSettings.replicationcron,
-						onTick: function () {
-							replicate_periodic({
-									environment: replicationCronSettings.replicationfrom
-								},
-								function (err, result) {
-									console.timeEnd('replication task');
-									if (err) {
-										logger.error(err.stack.toString());
-										logger.error(err.toString());
-									}
-									else {
-										logger.info('replication result', result);
-									}
-								});
 
-						},
-						onComplete: function () {
-								logger.silly('replication cron ran');
-							} //,
-							// start: true
-							// timeZone: "America/Los_Angeles"
-					});
-					// logger.silly(job);
-					job.start();
-
-
-
-				}
+	try {
+		fs.readJson(replicationconffilepath, function (err, replicationsettingsJSON) {
+			if (err) {
+				logger.error('REPLICATION CRON INVALID CONFIGURATION ERROR');
+				logger.error(err);
+				console.error(err);
 			}
-			catch (e) {
-				logger.error('REPLICATION SETTING CRON ERROR');
-				logger.error(e);
-				console.error(e);
+			else if (replicationsettingsJSON.cron && replicationsettingsJSON.cron[appenvironment]) {
+				replicationCronSettings = replicationsettingsJSON.cron[appenvironment];
+				logger.info('Replication Cron Job Settings', replicationCronSettings.replicationcron);
+				var job = new CronJob({
+					cronTime: replicationCronSettings.replicationcron,
+					onTick: function () {
+						replicate_periodic({
+								environment: replicationCronSettings.replicationfrom
+							},
+							function (err, result) {
+								console.timeEnd('replication task');
+								if (err) {
+									logger.error(err.stack.toString());
+									logger.error(err.toString());
+								}
+								else {
+									logger.info('replication result', result);
+								}
+							});
+
+					},
+					onComplete: function () {
+							logger.silly('replication cron ran');
+						} //,
+						// start: true
+						// timeZone: "America/Los_Angeles"
+				});
+				// logger.silly(job);
+				job.start();
 			}
-		}
-	})
+			else{
+				logger.info('No Replication Cron Settings for: '+appenvironment);
+			}
+		});
+	}
+	catch (e) {
+		logger.error('REPLICATION SETTING CRON ERROR');
+		logger.error(e);
+		console.error(e);
+	}
 };
 
 /**
