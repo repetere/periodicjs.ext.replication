@@ -30,7 +30,6 @@
     "periodicjs.core.controller": "~1.90.11",
     "periodicjs.core.extensions": "~1.90.16",
     "periodicjs.core.utilities": "~1.90.10",
-    "prettycron": "git+https://github.com/yawetse/prettycron.git",
     "ssh2": "^0.3.6"
   },
   "peerDependencies": {
