@@ -1,13 +1,9 @@
 'use strict';
 
-var path = require('path'),
-	fs = require('fs-extra'),
-	// util = require('util'),
-	async = require('async'),
+var fs = require('fs-extra'),
 	replicationController,
 	mongoose,
 	logger,
-	// datafile,
 	appSettings,
 	d = new Date();
 
@@ -47,24 +43,6 @@ var extscript = function (resources) {
 					process.exit(0);
 				});
 		}
-		// else if (argv.task === 'restore') {
-		// 	console.time('Restoring periodic');
-		// 	replicationController.restorereplication({
-		// 			file: argv.file,
-		// 			removereplication: argv.removereplication
-		// 		},
-		// 		function (err, result) {
-		// 			console.timeEnd('Restoring periodic');
-		// 			if (err) {
-		// 				logger.error(err.stack.toString());
-		// 				logger.error(err.toString());
-		// 			}
-		// 			else {
-		// 				logger.info('restore replication result', result);
-		// 			}
-		// 			process.exit(0);
-		// 		});
-		// }
 		else {
 			logger.silly('invalid replication task', argv);
 			process.exit(0);

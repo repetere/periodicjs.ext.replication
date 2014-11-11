@@ -8,6 +8,8 @@ var Utilities = require('periodicjs.core.utilities'),
 	fs = require('fs-extra'),
 	path = require('path'),
 	async = require('async'),
+	cronparser = require('cron-parser'),
+	croninterval,
 	CoreUtilities,
 	CoreController,
 	CoreExtension,
@@ -17,12 +19,10 @@ var Utilities = require('periodicjs.core.utilities'),
 	restoreController,
 	replicationconffilepath,
 	replicationSettings,
-	replicationSSHConnection,
-	uploadreplicationdir = path.resolve(process.cwd(), 'content/files/replications'),
+	nextReplicationCron,
+	defaultbackupdir = path.resolve(process.cwd(), 'content/files/backups'),
 	remotefiletodownload,
-	localfiletosave = path.resolve(process.cwd(), 'content/files/backups/replicationsnapshot.zip'),
-	d = new Date(),
-	defaultExportFileName = 'dbemptyreplication' + '-' + d.getUTCFullYear() + '-' + d.getUTCMonth() + '-' + d.getUTCDate() + '-' + d.getTime() + '.json';
+	localfiletosave = path.resolve(process.cwd(), 'content/files/backups/replicationsnapshot.zip');
 
 
 /**
@@ -38,90 +38,91 @@ var restoreFromReplicationBackup = function (asyncCallBack) {
 };
 
 /**
- * get the replication backup file zip file
+ * connect via SSH using get the replication settings, then generate a backup file saved in content/files/backsups/replicationsnapshot.zip
+ * @param  {object} replicationSettings replication settings from json config file
  * @param  {Function} asyncCallBack
  * @return {Function} async callback asyncCallBack(err,results);
  */
 var getReplicationData = function (replicationSettings, asyncCallBack) {
 	try {
-		var conn = new Connection();
-		var downloadProgressStatus = function (downloaded, chunk, total) {
-			console.log('downloaded', Math.floor((downloaded / total) * 100), '%', 'total', total, 'bytes');
-		};
-		var downloadReplicationBackup = function () {
-			conn.sftp(function (err, sftp) {
-				if (err) {
-					asyncCallBack(err);
-				}
-				else {
-					fs.ensureDirSync(path.resolve(process.cwd(), 'content/files/backups'));
-					remotefiletodownload = path.join(replicationSettings.webAppPath, 'content/files/backups/replicationsnapshot.zip');
-					sftp.fastGet(remotefiletodownload, localfiletosave, {
-							step: downloadProgressStatus
-						},
-						function (err) {
-							if (err) {
-								asyncCallBack(err);
-							}
-							else {
-								console.log('stfp :: exit ::');
-								asyncCallBack(null);
-								conn.end();
-							}
-						});
-				}
-			});
-		};
-		var onShell1 = function () {
-			conn.exec('cd ' + replicationSettings.webAppPath + ' && ls && node index.js --cli --extension backup --task backup --filename replicationsnapshot', function (err, stream) {
-				if (err) {
-					asyncCallBack(err);
-				}
-				else {
-					stream.on('exit', function (code, signal) {
-						console.log('Stream :: exit :: code: ' + code + ', signal: ' + signal);
-						downloadReplicationBackup();
-						// asyncCallBack(null, 'Stream :: exit :: code: ' + code + ', signal: ' + signal);
-					});
-					stream.on('close', function () {
-						console.log('Stream :: close');
-					});
-					stream.on('data', function (data) {
-						console.log('STDOUT: ' + data);
-					});
-					stream.stderr.on('data', function (data) {
-						console.log('STDERR: ' + data);
-					});
-					stream.on('end', function () {
-						console.log('Stream :: end');
-					});
-					stream.on('error', function (err) {
+		var conn = new Connection(),
+			downloadProgressStatus = function (downloaded, chunk, total) {
+				console.log('downloaded', Math.floor((downloaded / total) * 100), '%', 'total', total, 'bytes');
+			},
+			downloadReplicationBackup = function () {
+				conn.sftp(function (err, sftp) {
+					if (err) {
 						asyncCallBack(err);
-					});
-				}
+					}
+					else {
+						fs.ensureDirSync(defaultbackupdir);
+						remotefiletodownload = path.join(replicationSettings.webAppPath, 'content/files/backups/replicationsnapshot.zip');
+						sftp.fastGet(remotefiletodownload, localfiletosave, {
+								step: downloadProgressStatus
+							},
+							function (err) {
+								if (err) {
+									asyncCallBack(err);
+								}
+								else {
+									console.log('stfp :: exit ::');
+									asyncCallBack(null);
+									conn.end();
+								}
+							});
+					}
+				});
+			},
+			onShell1 = function () {
+				conn.exec('cd ' + replicationSettings.webAppPath + ' && ls && node index.js --cli --extension backup --task backup --filename replicationsnapshot', function (err, stream) {
+					if (err) {
+						asyncCallBack(err);
+					}
+					else {
+						stream.on('exit', function (code, signal) {
+							console.log('Stream :: exit :: code: ' + code + ', signal: ' + signal);
+							downloadReplicationBackup();
+							// asyncCallBack(null, 'Stream :: exit :: code: ' + code + ', signal: ' + signal);
+						});
+						stream.on('close', function () {
+							console.log('Stream :: close');
+						});
+						stream.on('data', function (data) {
+							console.log('STDOUT: ' + data);
+						});
+						stream.stderr.on('data', function (data) {
+							console.log('STDERR: ' + data);
+						});
+						stream.on('end', function () {
+							console.log('Stream :: end');
+						});
+						stream.on('error', function (err) {
+							asyncCallBack(err);
+						});
+					}
+				});
+			};
+			conn.connect(replicationSettings);
+			conn.on('ready', function () {
+				console.log('Connection :: readys');
+				conn.shell(onShell1);
 			});
-		};
-		conn.on('ready', function () {
-			console.log('Connection :: readys');
-			conn.shell(onShell1);
-		});
-		conn.connect(replicationSettings);
-		conn.on('error', function (err) {
-			asyncCallBack(err);
-		});
-		conn.on('end', function () {
-			asyncCallBack(null, 'got replication');
-		});
-	}
-	catch (e) {
-		asyncCallBack(e);
-	}
+			conn.on('error', function (err) {
+				asyncCallBack(err);
+			});
+			conn.on('end', function () {
+				asyncCallBack(null, 'got replication');
+			});
+		}
+		catch (e) {
+			asyncCallBack(e);
+		}
 };
 
 /**
- * get the replication settings
+ * get the replication settings from the replicateFromEnvironment look up settings in config file
  * @param  {Function} asyncCallBack
- * @return {Function} async callback asyncCallBack(err,results);
+ * @return {Function} async callback asyncCallBack(err,replicationSettings);
  */
 var getReplicationConfig = function (replicateFromEnvironment, asyncCallBack) {
 	fs.readJson(replicationconffilepath, function (err, confJson) {
@@ -145,6 +146,7 @@ var getReplicationConfig = function (replicateFromEnvironment, asyncCallBack) {
 
 /**
  * replicate periodic
+ * @param  {object} options environment - which environment to replicate from
  * @param  {Function} asyncCallBack
  * @return {Function} async callback asyncCallBack(err,results);
  */
@@ -170,35 +172,22 @@ var replicate_periodic = function (options, asyncCallBack) {
  * @return {object} responds with replication page
  */
 var index = function (req, res) {
+	var appenvironment = appSettings.application.environment;
 	async.waterfall([
 		function (cb) {
-			fs.ensureDir(path.join(process.cwd(), 'content/files/replications'), function (err) {
-				cb(err);
-			});
+			cb(null, appenvironment);
 		},
-		function (cb) {
+		getReplicationConfig,
+		function (replicationSettings,cb) {
 			CoreController.getPluginViewDefaultTemplate({
-					viewname: 'p-admin/replication/index',
-					themefileext: appSettings.templatefileextension,
-					extname: 'periodicjs.ext.replication'
-				},
-				function (err, templatepath) {
-					cb(err, templatepath);
-				});
-		},
-		function (templatepath, cb) {
-			fs.readdir(path.join(process.cwd(), 'content/files/replications'), function (err, files) {
-				var replicationzipfiles = [];
-				if (files && files.length > 0) {
-					for (var bufi = 0; bufi < files.length; bufi++) {
-						if (files[bufi].match(/.zip/gi)) {
-							replicationzipfiles.push(files[bufi]);
-						}
-					}
-				}
+				viewname: 'p-admin/replication/index',
+				themefileext: appSettings.templatefileextension,
+				extname: 'periodicjs.ext.replication'
+			},
+			function (err, templatepath) {
 				cb(err, {
 					templatepath: templatepath,
-					existingreplications: replicationzipfiles
+					replicationsettings: replicationSettings
 				});
 			});
 		}
@@ -217,7 +206,8 @@ var index = function (req, res) {
 				periodic: {
 					version: appSettings.version
 				},
-				existingreplications: result.existingreplications,
+				replicationsettings: result.replicationsettings,
+				nextreplication: nextReplicationCron,
 				user: req.user
 			}
 		});
@@ -242,7 +232,10 @@ var run_replication_cron = function () {
 			}
 			else if (replicationsettingsJSON.cron && replicationsettingsJSON.cron[appenvironment]) {
 				replicationCronSettings = replicationsettingsJSON.cron[appenvironment];
+				croninterval = cronparser.parseExpression(replicationCronSettings.replicationcron);
+				nextReplicationCron = croninterval.next();
 				logger.info('Replication Cron Job Settings', replicationCronSettings.replicationcron);
+				logger.info('Next Replication Cron :', nextReplicationCron);
 				var job = new CronJob({
 					cronTime: replicationCronSettings.replicationcron,
 					onTick: function () {
@@ -257,6 +250,8 @@ var run_replication_cron = function () {
 								}
 								else {
 									logger.info('replication result', result);
+									nextReplicationCron = croninterval.next();
+									logger.info('Next Replication Cron :', nextReplicationCron);
 								}
 							});
 
