@@ -1,7 +1,7 @@
 {
   "name": "periodicjs.ext.replication",
   "description": "An extension for seeding db with data",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "main": "index.js",
   "engines": {
     "node": ">=0.10.x"

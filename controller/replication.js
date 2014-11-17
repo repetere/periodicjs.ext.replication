@@ -21,6 +21,7 @@ var Utilities = require('periodicjs.core.utilities'),
 	replicationconffilepath,
 	replicationSettings,
 	nextReplicationCron,
+	repFromEnvironment,
 	defaultbackupdir = path.resolve(process.cwd(), 'content/files/backups'),
 	remotefiletodownload,
 	localfiletosave = path.resolve(process.cwd(), 'content/files/backups/replicationsnapshot.zip');
@@ -79,7 +80,7 @@ var getReplicationData = function (replicationSettings, asyncCallBack) {
 				});
 			},
 			onShell1 = function () {
-				conn.exec('cd ' + replicationSettings.webAppPath + ' && ls && node index.js --cli --extension backup --task backup --filename replicationsnapshot', function (err, stream) {
+				conn.exec('cd ' + replicationSettings.webAppPath + ' && ls && NODE_ENV='+repFromEnvironment+' node index.js --cli --extension backup --task backup --filename replicationsnapshot', function (err, stream) {
 					if (err) {
 						asyncCallBack(err);
 					}
@@ -157,6 +158,7 @@ var getReplicationConfig = function (replicateFromEnvironment, asyncCallBack) {
  */
 var replicate_periodic = function (options, asyncCallBack) {
 	var environment = options.environment;
+	repFromEnvironment = options.environment;
 
 	async.waterfall([
 		function (cb) {
