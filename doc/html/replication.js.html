@@ -31,9 +31,13 @@ var Utilities = require('periodicjs.core.utilities'),
 	ControllerHelper = require('periodicjs.core.controller'),
 	Extensions = require('periodicjs.core.extensions'),
 	Connection = require('ssh2'),
+	CronJob = require('cron').CronJob,
 	fs = require('fs-extra'),
 	path = require('path'),
 	async = require('async'),
+	cronparser = require('cron-parser'),
+	moment = require('moment'),
+	croninterval,
 	CoreUtilities,
 	CoreController,
 	CoreExtension,
@@ -43,13 +47,11 @@ var Utilities = require('periodicjs.core.utilities'),
 	restoreController,
 	replicationconffilepath,
 	replicationSettings,
-	replicationSSHConnection,
-	uploadreplicationdir = path.resolve(process.cwd(), 'content/files/replications'),
+	nextReplicationCron,
+	repFromEnvironment,
+	defaultbackupdir = path.resolve(process.cwd(), 'content/files/backups'),
 	remotefiletodownload,
-	localfiletosave = path.resolve(process.cwd(), 'content/files/backups/replicationsnapshot.zip'),
-	d = new Date(),
-	defaultExportFileName = 'dbemptyreplication' + '-' + d.getUTCFullYear() + '-' + d.getUTCMonth() + '-' + d.getUTCDate() + '-' + d.getTime() + '.json';
-
+	localfiletosave = path.resolve(process.cwd(), 'content/files/backups/replicationsnapshot.zip');
 
 /**
  * restore the downloaded zip file and remove it when done
@@ -57,6 +59,7 @@ var Utilities = require('periodicjs.core.utilities'),
  * @return {Function} async callback asyncCallBack(err,results);
  */
 var restoreFromReplicationBackup = function (asyncCallBack) {
+	logger.silly('now restore back up from replication');
 	restoreController.restoreBackup({
 		file: localfiletosave,
 		removebackup: true
@@ -64,74 +67,80 @@ var restoreFromReplicationBackup = function (asyncCallBack) {
 };
 
 /**
- * get the replication backup file zip file
+ * connect via SSH using get the replication settings, then generate a backup file saved in content/files/backsups/replicationsnapshot.zip
+ * @param  {object} replicationSettings replication settings from json config file
  * @param  {Function} asyncCallBack
  * @return {Function} async callback asyncCallBack(err,results);
  */
 var getReplicationData = function (replicationSettings, asyncCallBack) {
 	try {
-		var conn = new Connection();
-		var downloadProgressStatus = function (downloaded, chunk, total) {
-			console.log('downloaded', Math.floor((downloaded / total) * 100), '%', 'total', total, 'bytes');
-		};
-		var downloadReplicationBackup = function () {
-			conn.sftp(function (err, sftp) {
-				if (err) {
-					asyncCallBack(err);
+		var conn = new Connection(),
+			downloadProgressStatus = function (downloaded, chunk, total) {
+				console.log('downloaded', Math.floor((downloaded / total) * 100), '%', 'total', total, 'bytes');
+				if (downloaded === total) {
+					logger.info('Replication downloaded: ' + total + 'bytes');
 				}
-				else {
-					fs.ensureDirSync(path.resolve(process.cwd(), 'content/files/backups'));
-					remotefiletodownload = path.join(replicationSettings.webAppPath, 'content/files/backups/replicationsnapshot.zip');
-					sftp.fastGet(remotefiletodownload, localfiletosave, {
-							step: downloadProgressStatus
-						},
-						function (err) {
-							if (err) {
-								asyncCallBack(err);
-							}
-							else {
-								console.log('stfp :: exit ::');
-								asyncCallBack(null);
-								conn.end();
-							}
-						});
-				}
-			});
-		};
-		var onShell1 = function () {
-			conn.exec('cd ' + replicationSettings.webAppPath + ' &amp;&amp; ls &amp;&amp; node index.js --cli --extension backup --task backup --filename replicationsnapshot', function (err, stream) {
-				if (err) {
-					asyncCallBack(err);
-				}
-				else {
-					stream.on('exit', function (code, signal) {
-						console.log('Stream :: exit :: code: ' + code + ', signal: ' + signal);
-						downloadReplicationBackup();
-						// asyncCallBack(null, 'Stream :: exit :: code: ' + code + ', signal: ' + signal);
-					});
-					stream.on('close', function () {
-						console.log('Stream :: close');
-					});
-					stream.on('data', function (data) {
-						console.log('STDOUT: ' + data);
-					});
-					stream.stderr.on('data', function (data) {
-						console.log('STDERR: ' + data);
-					});
-					stream.on('end', function () {
-						console.log('Stream :: end');
-					});
-					stream.on('error', function (err) {
+			},
+			downloadReplicationBackup = function () {
+				conn.sftp(function (err, sftp) {
+					if (err) {
 						asyncCallBack(err);
-					});
-				}
-			});
-		};
+					}
+					else {
+						fs.ensureDirSync(defaultbackupdir);
+						remotefiletodownload = path.join(replicationSettings.webAppPath, 'content/files/backups/replicationsnapshot.zip');
+						sftp.fastGet(remotefiletodownload, localfiletosave, {
+								step: downloadProgressStatus
+							},
+							function (err) {
+								if (err) {
+									asyncCallBack(err);
+								}
+								else {
+									console.log('stfp :: exit ::');
+									logger.info('downloaded replication data');
+									logger.info('Replication download complete: ' + new Date().toString());
+									asyncCallBack(null);
+									conn.end();
+								}
+							});
+					}
+				});
+			},
+			onShell1 = function () {
+				conn.exec('cd ' + replicationSettings.webAppPath + ' &amp;&amp; ls &amp;&amp; NODE_ENV='+repFromEnvironment+' node index.js --cli --extension backup --task backup --filename replicationsnapshot', function (err, stream) {
+					if (err) {
+						asyncCallBack(err);
+					}
+					else {
+						stream.on('exit', function (code, signal) {
+							console.log('Stream :: exit :: code: ' + code + ', signal: ' + signal);
+							downloadReplicationBackup();
+							// asyncCallBack(null, 'Stream :: exit :: code: ' + code + ', signal: ' + signal);
+						});
+						stream.on('close', function () {
+							console.log('Stream :: close');
+						});
+						stream.on('data', function (data) {
+							console.log('STDOUT: ' + data);
+						});
+						stream.stderr.on('data', function (data) {
+							console.log('STDERR: ' + data);
+						});
+						stream.on('end', function () {
+							console.log('Stream :: end');
+						});
+						stream.on('error', function (err) {
+							asyncCallBack(err);
+						});
+					}
+				});
+			};
+		conn.connect(replicationSettings);
 		conn.on('ready', function () {
 			console.log('Connection :: readys');
 			conn.shell(onShell1);
 		});
-		conn.connect(replicationSettings);
 		conn.on('error', function (err) {
 			asyncCallBack(err);
 		});
@@ -145,9 +154,9 @@ var getReplicationData = function (replicationSettings, asyncCallBack) {
 };
 
 /**
- * get the replication settings
+ * get the replication settings from the replicateFromEnvironment look up settings in config file
  * @param  {Function} asyncCallBack
- * @return {Function} async callback asyncCallBack(err,results);
+ * @return {Function} async callback asyncCallBack(err,replicationSettings);
  */
 var getReplicationConfig = function (replicateFromEnvironment, asyncCallBack) {
 	fs.readJson(replicationconffilepath, function (err, confJson) {
@@ -156,7 +165,7 @@ var getReplicationConfig = function (replicateFromEnvironment, asyncCallBack) {
 		}
 		else {
 			try {
-				replicationSettings = confJson[replicateFromEnvironment];
+				replicationSettings = confJson.environment[replicateFromEnvironment];
 				if (replicationSettings.privateKey) {
 					replicationSettings.privateKey = fs.readFileSync(path.resolve(replicationSettings.privateKey));
 				}
@@ -171,11 +180,13 @@ var getReplicationConfig = function (replicateFromEnvironment, asyncCallBack) {
 
 /**
  * replicate periodic
+ * @param  {object} options environment - which environment to replicate from
  * @param  {Function} asyncCallBack
  * @return {Function} async callback asyncCallBack(err,results);
  */
 var replicate_periodic = function (options, asyncCallBack) {
 	var environment = options.environment;
+	repFromEnvironment = options.environment;
 
 	async.waterfall([
 		function (cb) {
@@ -185,9 +196,50 @@ var replicate_periodic = function (options, asyncCallBack) {
 		getReplicationData,
 		restoreFromReplicationBackup
 	], function (err, results) {
+		logger.info('Replication completed successfully');
 		asyncCallBack(err, results);
 	});
 };
+
+/**
+ * upload custom seed controller for seeds posted via admin interface
+ * @param  {object} req
+ * @param  {object} res
+ * @return {object} responds with dbseed page
+ */
+var run_replication = function (req, res) {
+	var replicationOptions = CoreUtilities.removeEmptyObjectValues(req.body);
+
+	console.time('Replication Status Data');
+	replicate_periodic({
+			environment: replicationOptions.replicationenvironmentlist
+		},
+		function (err, result) {
+			console.timeEnd('Replication Status Data');
+			if (err) {
+				CoreController.handleDocumentQueryErrorResponse({
+					err: err,
+					res: res,
+					req: req
+				});
+			}
+			else {
+				CoreController.handleDocumentQueryRender({
+					res: res,
+					req: req,
+					renderView: 'home/index',
+					responseData: {
+						pagedata: {
+							title: 'Replication Status',
+						},
+						data: result,
+						user: req.user
+					}
+				});
+			}
+		});
+};
+
 
 /**
  * uploads replications via admin interface
@@ -196,37 +248,23 @@ var replicate_periodic = function (options, asyncCallBack) {
  * @return {object} responds with replication page
  */
 var index = function (req, res) {
+	var appenvironment = appSettings.application.environment;
 	async.waterfall([
 		function (cb) {
-			fs.ensureDir(path.join(process.cwd(), 'content/files/replications'), function (err) {
-				cb(err);
-			});
+			fs.readJson(replicationconffilepath, cb);
 		},
-		function (cb) {
+		function (replicationSettingsJson, cb) {
 			CoreController.getPluginViewDefaultTemplate({
 					viewname: 'p-admin/replication/index',
 					themefileext: appSettings.templatefileextension,
 					extname: 'periodicjs.ext.replication'
 				},
 				function (err, templatepath) {
-					cb(err, templatepath);
+					cb(err, {
+						templatepath: templatepath,
+						replicationsettingsjson: replicationSettingsJson
+					});
 				});
-		},
-		function (templatepath, cb) {
-			fs.readdir(path.join(process.cwd(), 'content/files/replications'), function (err, files) {
-				var replicationzipfiles = [];
-				if (files &amp;&amp; files.length > 0) {
-					for (var bufi = 0; bufi &lt; files.length; bufi++) {
-						if (files[bufi].match(/.zip/gi)) {
-							replicationzipfiles.push(files[bufi]);
-						}
-					}
-				}
-				cb(err, {
-					templatepath: templatepath,
-					existingreplications: replicationzipfiles
-				});
-			});
 		}
 	], function (err, result) {
 		CoreController.handleDocumentQueryRender({
@@ -236,19 +274,85 @@ var index = function (req, res) {
 			renderView: result.templatepath,
 			responseData: {
 				pagedata: {
-					title: 'Backup &amp; Restore',
+					title: 'Application Replication',
 					headerjs: ['/extensions/periodicjs.ext.replication/js/replication.min.js'],
 					extensions: CoreUtilities.getAdminMenu()
 				},
 				periodic: {
 					version: appSettings.version
 				},
-				existingreplications: result.existingreplications,
+				replicationsettingsjson: result.replicationsettingsjson,
+				nextreplication: nextReplicationCron,
+				nextreplicationformatted: moment(nextReplicationCron).format('MMMM Do YYYY, h:mm:ss a'),
+				nextreplicationfromnow: moment(nextReplicationCron).fromNow(),
+				currentenv: appenvironment,
 				user: req.user
 			}
 		});
 	});
+};
 
+/**
+ * runs cron to replication
+ * @todo use: https://github.com/thomseddon/cronstring/ at some point
+ */
+var run_replication_cron = function () {
+	var replicationCronSettings,
+		appenvironment = appSettings.application.environment;
+
+	try {
+		fs.readJson(replicationconffilepath, function (err, replicationsettingsJSON) {
+			if (err) {
+				logger.error('REPLICATION CRON INVALID CONFIGURATION ERROR');
+				logger.error(err);
+				console.error(err);
+			}
+			else if (replicationsettingsJSON.cron &amp;&amp; replicationsettingsJSON.cron[appenvironment]) {
+				replicationCronSettings = replicationsettingsJSON.cron[appenvironment];
+				croninterval = cronparser.parseExpression(replicationCronSettings.replicationcron);
+				nextReplicationCron = croninterval.next();
+				logger.info('Replication Cron Job Settings', replicationCronSettings.replicationcron);
+				logger.info('Next Replication Cron :', nextReplicationCron.toString());
+				var job = new CronJob({
+					cronTime: replicationCronSettings.replicationcron,
+					onTick: function () {
+						console.time('replication task');
+						replicate_periodic({
+								environment: replicationCronSettings.replicationfrom
+							},
+							function (err, result) {
+								console.timeEnd('replication task');
+								if (err) {
+									logger.error(err.stack.toString());
+									logger.error(err.toString());
+								}
+								else {
+									logger.info('replication result', result);
+									nextReplicationCron = croninterval.next();
+									logger.info('Next Replication Cron :', nextReplicationCron.toString());
+								}
+							});
+
+					},
+					onComplete: function () {
+							logger.silly('replication cron ran');
+						} //,
+						// start: true
+						// timeZone: "America/Los_Angeles"
+				});
+				// logger.silly(job);
+				job.start();
+			}
+			else {
+				logger.info('No Replication Cron Settings for: ' + appenvironment);
+			}
+		});
+	}
+	catch (e) {
+		logger.error('REPLICATION SETTING CRON ERROR');
+		logger.error(e);
+		console.error(e);
+	}
 };
 
 /**
@@ -275,11 +379,12 @@ var controller = function (resources) {
 		extname: 'periodicjs.ext.replication'
 	}), 'settings.json');
 	restoreController = require('../../periodicjs.ext.backup/controller/restorebackup')(resources);
+
+	run_replication_cron();
 	return {
 		index: index,
 		replicate_periodic: replicate_periodic,
-		// restoreBackup: restoreBackupModule.restoreBackup,
-		// exportBackup: exportBackupModule.exportBackup,
+		run_replication: run_replication,
 	};
 };
 
@@ -294,13 +399,13 @@ module.exports = controller;
 </div>
 
 <nav>
-    <h2><a href="index.html">Index</a></h2><h3>Modules</h3><ul><li><a href="module-clireplicationController.html">clireplicationController</a></li><li><a href="module-replicationController.html">replicationController</a></li><li><a href="replication.html">replication</a></li></ul><h3>Global</h3><ul><li><a href="global.html#getReplicationConfig">getReplicationConfig</a></li><li><a href="global.html#getReplicationData">getReplicationData</a></li><li><a href="global.html#index">index</a></li><li><a href="global.html#replicate_periodic">replicate_periodic</a></li><li><a href="global.html#restoreFromReplicationBackup">restoreFromReplicationBackup</a></li></ul>
+    <h2><a href="index.html">Index</a></h2><h3>Modules</h3><ul><li><a href="module-clireplicationController.html">clireplicationController</a></li><li><a href="module-replicationController.html">replicationController</a></li><li><a href="replication.html">replication</a></li></ul><h3>Global</h3><ul><li><a href="global.html#getReplicationConfig">getReplicationConfig</a></li><li><a href="global.html#getReplicationData">getReplicationData</a></li><li><a href="global.html#index">index</a></li><li><a href="global.html#replicate_periodic">replicate_periodic</a></li><li><a href="global.html#restoreFromReplicationBackup">restoreFromReplicationBackup</a></li><li><a href="global.html#run_replication">run_replication</a></li><li><a href="global.html#run_replication_cron">run_replication_cron</a></li></ul>
 </nav>
 
 <br clear="both">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.0-alpha5</a> on Fri Oct 31 2014 18:18:43 GMT-0400 (EDT)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.0-alpha5</a> on Mon Nov 17 2014 19:00:09 GMT-0500 (EST)
 </footer>
 
 <script> prettyPrint(); </script>

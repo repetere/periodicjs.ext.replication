@@ -32,6 +32,7 @@ var Utilities = require('periodicjs.core.utilities'),
  * @return {Function} async callback asyncCallBack(err,results);
  */
 var restoreFromReplicationBackup = function (asyncCallBack) {
+	logger.silly('now restore back up from replication');
 	restoreController.restoreBackup({
 		file: localfiletosave,
 		removebackup: true

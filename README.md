@@ -1,6 +1,6 @@
 # periodicjs.ext.replication
 
-replication your current instance of periodic to a zip archieve containing your configurations, content, themes, and database.
+replication your current instance of periodic to a zip archieve containing your configurations, content, themes, and database via ssh.
 
  [API Documentation](https://github.com/typesettin/periodicjs.ext.replication/blob/master/doc/api.md)
 
@@ -12,19 +12,11 @@ $ npm install periodicjs.ext.replication
 
 ## Usage
 
-### import database (upsert/update) with custom file replication from cli
+### replicate another periodic application via sssh
 
 ```
-$ node index.js --cli --extension replication --task replication [--filename optionalreplicationzipname --outputpath optionaloutputdirectory]
+$ node index.js --cli --extension replication --task replicate --repenv production
 ```
-
-### export database to replication file replication from cli
-
-```
-$ node index.js --cli --extension replication --task export --file /path/to/file.json
-```
-
-If no file path is specified, the default file path is `content/files/replications/replications/replication-[year]-[month]-[day]-[timestamp].json`
 
 ##Development
 *Make sure you have grunt installed*
