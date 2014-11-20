@@ -1,8 +1,8 @@
 {
-	"periodicCompatibility":"2.1.8",
+	"periodicCompatibility":"3.0.0",
 	"periodicDependencies": [{
   	"extname":"periodicjs.ext.backup",
-    "version":"2.0.1"
+    "version":"3.0.0"
 	}],
 	"periodicjs.ext.admin": {
 		"menu": {
