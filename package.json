@@ -1,7 +1,7 @@
 {
   "name": "periodicjs.ext.replication",
   "description": "An extension for seeding db with data",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "main": "index.js",
   "engines": {
     "node": ">=0.10.x"
@@ -28,9 +28,9 @@
     "fs-extra": "0.12.0",
     "moment": "^2.8.3",
     "periodicjs.component.tabs": "^1.1.0",
-    "periodicjs.core.controller": "~3.0.0",
-    "periodicjs.core.extensions": "~3.0.0",
-    "periodicjs.core.utilities": "~3.0.0",
+    "periodicjs.core.controller": "~3.1.1",
+    "periodicjs.core.extensions": "~3.1.1",
+    "periodicjs.core.utilities": "~3.1.1",
     "ssh2": "^0.3.6"
   },
   "devDependencies": {
