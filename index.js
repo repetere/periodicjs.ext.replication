@@ -11,8 +11,12 @@ var path = require('path');
  */
 module.exports = function (periodic) {
 	// express,app,logger,config,db,mongoose
+	periodic.app.controller.extension.replication = {
+		replication: require('./controller/replication')(periodic)
+	};
+
 	var replicationRouter = periodic.express.Router(),
-		replicationController = require('./controller/replication')(periodic);
+		replicationController = periodic.app.controller.extension.replication.replication;
 
 	for (var x in periodic.settings.extconf.extensions) {
 		if (periodic.settings.extconf.extensions[x].name === 'periodicjs.ext.admin') {
@@ -22,4 +26,5 @@ module.exports = function (periodic) {
 	}
 
 	periodic.app.use('/p-admin/replication', replicationRouter);
+	return periodic;
 };

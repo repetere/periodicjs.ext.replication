@@ -351,7 +351,7 @@ var controller = function (resources) {
 	replicationconffilepath = path.join(CoreExtension.getconfigdir({
 		extname: 'periodicjs.ext.replication'
 	}), 'settings.json');
-	restoreController = require('../../periodicjs.ext.backup/controller/restorebackup')(resources);
+	restoreController = periodic.app.controller.extension.backup.restorebackup;
 
 	run_replication_cron();
 	return {
